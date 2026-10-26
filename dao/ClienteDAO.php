@@ -1,78 +1,41 @@
-<?php 
-
+<?php
 declare(strict_types=1);
+require_once __DIR__ . '/../model/Conn.php';
+require_once __DIR__ . '/../model/Cliente.php';
 
-require_once "../model/Conn.php";
-require_once "../model/Cliente.php";
-
-class ClienteDAO 
+class ClienteDAO
 {
     private PDO $conn;
-
-    private string $tabela = "cliente";
-
-    public function __construct() //conexão
-    {
-        $this->conn = new Conn()
-    }
-
-    private function texto(string $texto): string
-    {
-        return mb_strtoupper(trim($texto));
-    }
+    public function __construct() { $this->conn = new Conn(); }
     
-     public function salvar(Cliente $cliente): bool
+    public function salvar(Cliente $cliente): bool
     {
-        if ($cliente->getId() == null) {
-
-            $sql = "INSERT INTO cliente (nome, email) VALUES (?, ?)";
-
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bindValue(1, $this->texto($cliente->getNome()));
-            $stmt->bindValue(2, $this->texto($cliente->getEmail()));
-        } else{
-
-            $sql = "UPDATE cliente SET nome = ?, email = ? WHERE id = ?"
-
-            $stmt = $this->conn->prepare($sql)
-            $stmt->bindValue(1, $this->texto($cliente->getNome()));
-            $stmt->bindValue(2, $this->texto($cliente->getEmail()));
-            $stmt->bindValue(3, $cliente->getId());
+        if ($cliente->getId() === null) {
+            $stmt = $this->conn->prepare('INSERT INTO cliente (nome, email, telefone) VALUES (?, ?, ?)');
+            return $stmt->execute([$cliente->getNome(), $cliente->getEmail(), $cliente->getTelefone()]);
         }
-        return $stmt->execute();
+        $stmt = $this->conn->prepare('UPDATE cliente SET nome = ?, email = ?, telefone = ? WHERE id = ?');
+        return $stmt->execute([$cliente->getNome(), $cliente->getEmail(), $cliente->getTelefone(), $cliente->getId()]);
     }
 
     public function listar(): array
     {
-        $sql = "SELECT * FROM {$this->tabela} ORDER BY var_nome";
-        $executar = $this->conn->query($sql);
-        return $executar->fetchAll(PDO::FETCH_ASSOC);
+        return $this->conn->query('SELECT id, nome, email, telefone FROM cliente ORDER BY nome')->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function consultarPorId(int $id): ?Cliente
+    public function buscarPorId(int $id): ?Cliente
     {
-        $sql = "SELECT * FROM {$this->tabela} WHERE var_id = ?";
-        $executar->bindValue(1, $id);
-        $executar->execute();
-        $dados = $executar->fetch(PDO::FETCH_ASSOC);
-
-        if (!$dados){
-            return null;
-        }
-
-        $cliente = new Cliente();
-        $cliente->setId($dados["id"]);
-        $cliente->setNome($dados["nome"]);
-        $cliente->setEmail($dados[email]);
-
-        return $cliente;
+        $stmt = $this->conn->prepare('SELECT id, nome, email, telefone FROM cliente WHERE id = ?');
+        $stmt->execute([$id]);
+        $d = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$d) return null;
+        return (new Cliente())->setId((int)$d['id'])->setNome($d['nome'])->setEmail($d['email'])->setTelefone($d['telefone']);
     }
-    
-    public function excluir(int $id): bool
+
+    public function pesquisar(string $nome): array
     {
-        $sql = "DELETE FROM {$this->tabela} ORDER BY var_nome";
-        $executar = $this->conn->prepare($sql);
-        $executar->bindValue(1, $id);
-        return $executar->execute();
-    }    
+        $stmt = $this->conn->prepare('SELECT id, nome, email, telefone FROM cliente WHERE nome LIKE ? ORDER BY nome');
+        $stmt->execute(['%' . $nome . '%']);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

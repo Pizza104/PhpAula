@@ -1,8 +1,5 @@
-<?php //não precisa fechar quando só tem php 
-//Controller é o gerente que controla como intermediário entre o model, dao e o view
+<?php
 
-
-//exige/obriga a tipificação dos atributos e métodos (pode cair na prova)
 declare(strict_types=1);
 
 require_once "../model/Categoria.php";
@@ -19,21 +16,65 @@ class CategoriaController
         $this->dao = new CategoriaDAO();
     }
 
+    public function salvar(): bool
+    {
+        $categoria = new Categoria();
+
+        $categoria->setNome(
+            filter_input(INPUT_POST, 'txtnome') ?? ''
+        );
+
+        $categoria->setInformacoes(
+            filter_input(INPUT_POST, 'txtinformacoes') ?? ''
+        );
+
+        return $this->dao->salvar($categoria);
+    }
+
+    public function alterar(): bool
+    {
+        $categoria = new Categoria();
+
+        $categoria->setId(
+            filter_input(
+                INPUT_POST,
+                'txtid',
+                FILTER_VALIDATE_INT
+            )
+        );
+
+        $categoria->setNome(
+            //usa o txtnome se nulo pega o vazio À direita
+            filter_input(INPUT_POST, 'txtnome') ?? ''
+        );
+
+        $categoria->setInformacoes(
+            filter_input(INPUT_POST, 'txtinformacoes') ?? ''
+        );
+
+        return $this->dao->salvar($categoria);
+    }
+
+    public function excluir(int $id): bool
+    {
+        return $this->dao->excluir($id);
+    }
+
     public function listar(): array
     {
         return $this->dao->listar();
     }
 
-    public function salvar(): bool
+    public function buscarPorId(int $id): ?Categoria
     {
-        $this->categoria->setNome(filter_input(INPUT_POST, "txtnome"));
-        $this->categoria->setInformacoes(filter_input(INPUT_POST, "txtinformacoes"));
-
-        return $this->dao->salvar($this->categoria);
+        return $this->dao->buscarPorId($id);
     }
 
-    public function excluir(int $id): bool
+    public function pesquisar(string $campo, string $valor): array
     {
-        return $this->dao->exlcuir($id);
+        return $this->dao->pesquisar(
+            $campo,
+            $valor
+        );
     }
 }

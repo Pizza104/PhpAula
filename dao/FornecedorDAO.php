@@ -1,78 +1,41 @@
 <?php
+declare(strict_types=1);
+require_once __DIR__ . '/../model/Conn.php';
+require_once __DIR__ . '/../model/Fornecedor.php';
 
-declare(strict_types=1)
-
-require_once '../model/Conn.php';
-require_once '../model/Fornecedor.php';
-
-class FornecedorDAO 
+class FornecedorDAO
 {
     private PDO $conn;
-    private string $tabela = "fornecedor"
+    public function __construct() { $this->conn = new Conn(); }
 
-    public function __construct()
+    public function salvar(Fornecedor $fornecedor): bool
     {
-        $this->conn = new Conn()
-    }
-
-    private function texto(string $texto): string
-    {
-        return mb_strtoupper(trim($texto));
-    }
-    
-    public function salvar(Fornecedor $fornecedor) : bool
-    {
-        if ($fornecedor->getId() == null)
-            {
-                $sql = "INSERT INTO fornecedor (nome, cidade) VALUES (?, ?)";
-
-                $stmt = $this->conn->prepare($sql);
-                $stmt->bindValue(1, $this->texto($fornecedor->getNome()));
-                $stmt->bindValue(2, $this->texto($fornecedor->getCidade()));
-            } else {
-                
-                $sql = "UPDATE fornecedor SET nome = ?, cidade = ? WHERE id = ?"
-
-                $stmt = $this->conn->prepare($sql)
-                $stmt->bindValue(1, $this->texto($fornecedor->getNome()));
-                $stmt->bindValue(2, $this->texto($fornecedor->getCidade()));
-                $stmt->bindValue(3, $fornecedor->getId())
-            }
-            return $stmt->execute();
+        if ($fornecedor->getId() === null) {
+            $stmt = $this->conn->prepare('INSERT INTO fornecedor (razao_social, email, telefone) VALUES (?, ?, ?)');
+            return $stmt->execute([$fornecedor->getRazaoSocial(), $fornecedor->getEmail(), $fornecedor->getTelefone()]);
+        }
+        $stmt = $this->conn->prepare('UPDATE fornecedor SET razao_social = ?, email = ?, telefone = ? WHERE id = ?');
+        return $stmt->execute([$fornecedor->getRazaoSocial(), $fornecedor->getEmail(), $fornecedor->getTelefone(), $fornecedor->getId()]);
     }
 
     public function listar(): array
     {
-        $sql = "SELECT * FROM {$this->tabela} ORDER BY var_nome";
-        $executar = $this->conn->query($sql);
-        return $executar->fetchAll(PDO::FETCH_ASSOC);
+        return $this->conn->query('SELECT id, razao_social, email, telefone FROM fornecedor ORDER BY razao_social')->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function consultarPorId(int $id): ?Fornecedor
+    public function buscarPorId(int $id): ?Fornecedor
     {
-        $sql = "SELECT * FROM {$this->tabela} WHERE var_id = ?";
-        $executar->bindValue(1, $id);
-        $executar->execute();
-        $dados = $executar->fetchAll(PDO::FETCH_ASSOC);
-
-        if(!$dados){
-                return null;
-            }
-
-        $fornecedor = new Fornecedor();
-        $fornecedor->setId($dados["id"]);
-        $fornecedor->setNome($dados["nome"]);
-        $fornecedor->setCidade($dados["cidade"]);  
-        
-        return $fornecedor
+        $stmt = $this->conn->prepare('SELECT id, razao_social, email, telefone FROM fornecedor WHERE id = ?');
+        $stmt->execute([$id]);
+        $d = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$d) return null;
+        return (new Fornecedor())->setId((int)$d['id'])->setRazaoSocial($d['razao_social'])->setEmail($d['email'])->setTelefone($d['telefone']);
     }
 
-    public function excluir(int $id) : bool
+    public function pesquisar(string $razaoSocial): array
     {
-        $sql = "DELETE FROM {$this->tabela} ORDER BY var_nome";
-        $executar = $this->conn->prepare($sql);
-        $executar->bindValue(1, $id);
-        return $executar->execute();
-    }  
-
+        $stmt = $this->conn->prepare('SELECT id, razao_social, email, telefone FROM fornecedor WHERE razao_social LIKE ? ORDER BY razao_social');
+        $stmt->execute(['%' . $razaoSocial . '%']);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
